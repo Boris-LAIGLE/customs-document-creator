@@ -12,7 +12,9 @@ import { Textarea } from './components/ui/textarea';
 import { Label } from './components/ui/label';
 import { Separator } from './components/ui/separator';
 import { Alert, AlertDescription } from './components/ui/alert';
-import { FileText, Users, CheckCircle, Clock, AlertTriangle, Plus, LogOut, Search, Filter } from 'lucide-react';
+import { Checkbox } from './components/ui/checkbox';
+import { FileText, Users, CheckCircle, Clock, AlertTriangle, Plus, LogOut, Search, Filter, 
+         Settings, Download, Eye, PlayCircle, StopCircle, XCircle } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
