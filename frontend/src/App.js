@@ -295,22 +295,35 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [controls, setControls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('documents');
 
   useEffect(() => {
     fetchData();
     initializeTemplates();
+    initializeRegulations();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [docsResponse, templatesResponse] = await Promise.all([
+      const requests = [
         axios.get(`${API}/documents`),
         axios.get(`${API}/templates`)
-      ]);
-      setDocuments(docsResponse.data);
-      setTemplates(templatesResponse.data);
+      ];
+      
+      // Only fetch controls for control officers and validation officers
+      if (user.role === 'control_officer' || user.role === 'validation_officer') {
+        requests.push(axios.get(`${API}/controls`));
+      }
+      
+      const responses = await Promise.all(requests);
+      setDocuments(responses[0].data);
+      setTemplates(responses[1].data);
+      
+      if (responses[2]) {
+        setControls(responses[2].data);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -323,6 +336,14 @@ const Dashboard = () => {
       await axios.post(`${API}/init/templates`);
     } catch (error) {
       console.error('Error initializing templates:', error);
+    }
+  };
+
+  const initializeRegulations = async () => {
+    try {
+      await axios.post(`${API}/init/regulations`);
+    } catch (error) {
+      console.error('Error initializing regulations:', error);
     }
   };
 
