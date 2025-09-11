@@ -487,6 +487,38 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
     }
   };
 
+  const handleDownloadPDF = async (documentId) => {
+    try {
+      const response = await axios.get(`${API}/documents/${documentId}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'document.pdf';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Erreur lors du téléchargement du PDF');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
