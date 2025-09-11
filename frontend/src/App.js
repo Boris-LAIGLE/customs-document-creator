@@ -597,6 +597,15 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
                         Soumettre
                       </Button>
                     )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadPDF(document.id)}
+                      className="flex items-center space-x-1"
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>PDF</span>
+                    </Button>
                     <Button variant="outline" size="sm">
                       Voir détails
                     </Button>
