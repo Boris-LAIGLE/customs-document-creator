@@ -441,6 +441,23 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
 
   const canCreateDocument = user.role === 'drafting_agent';
 
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      draft: { color: 'bg-slate-100 text-slate-700', label: 'Brouillon' },
+      under_control: { color: 'bg-orange-100 text-orange-700', label: 'En contrôle' },
+      under_validation: { color: 'bg-blue-100 text-blue-700', label: 'En validation' },
+      validated: { color: 'bg-green-100 text-green-700', label: 'Validé' },
+      rejected: { color: 'bg-red-100 text-red-700', label: 'Rejeté' }
+    };
+    
+    const config = statusConfig[status] || statusConfig.draft;
+    return (
+      <Badge className={`${config.color} border-0`}>
+        {config.label}
+      </Badge>
+    );
+  };
+
   const handleCreateDocument = async (e) => {
     e.preventDefault();
     try {
