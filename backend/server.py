@@ -371,6 +371,234 @@ async def submit_document(
     
     return {"message": "Document submitted for control"}
 
+# PDF Generation
+from weasyprint import HTML, CSS
+from fastapi.responses import FileResponse
+import tempfile
+
+def generate_document_pdf(document: Document, template: DocumentTemplate) -> str:
+    """Generate PDF for a document"""
+    
+    # Create HTML content
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{
+                font-family: 'Arial', sans-serif;
+                margin: 40px;
+                line-height: 1.6;
+                color: #333;
+            }}
+            .header {{
+                text-align: center;
+                border-bottom: 2px solid #2563eb;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }}
+            .title {{
+                font-size: 24px;
+                font-weight: bold;
+                color: #1e40af;
+                margin-bottom: 10px;
+            }}
+            .subtitle {{
+                font-size: 14px;
+                color: #6b7280;
+            }}
+            .section {{
+                margin-bottom: 25px;
+            }}
+            .section-title {{
+                font-size: 18px;
+                font-weight: bold;
+                color: #374151;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 5px;
+                margin-bottom: 15px;
+            }}
+            .field {{
+                margin-bottom: 12px;
+                display: flex;
+                justify-content: space-between;
+            }}
+            .field-label {{
+                font-weight: 600;
+                color: #4b5563;
+                width: 40%;
+            }}
+            .field-value {{
+                width: 55%;
+                color: #111827;
+            }}
+            .footer {{
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+                font-size: 12px;
+                color: #6b7280;
+            }}
+            .history {{
+                background-color: #f9fafb;
+                padding: 15px;
+                border-radius: 6px;
+                margin-top: 20px;
+            }}
+            .history-item {{
+                margin-bottom: 8px;
+                font-size: 13px;
+            }}
+            .status {{
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+                background-color: #dbeafe;
+                color: #1d4ed8;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="title">Administration Douanière de Nouvelle-Calédonie</div>
+            <div class="subtitle">Système de Gestion des Actes Administratifs</div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Informations du Document</div>
+            <div class="field">
+                <div class="field-label">Titre:</div>
+                <div class="field-value">{document.title}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Type:</div>
+                <div class="field-value">{document.document_type}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Statut:</div>
+                <div class="field-value"><span class="status">{document.status}</span></div>
+            </div>
+            <div class="field">
+                <div class="field-label">Créé par:</div>
+                <div class="field-value">{document.created_by_name}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Date de création:</div>
+                <div class="field-value">{document.created_at.strftime('%d/%m/%Y à %H:%M')}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Contenu du Document</div>
+    """
+    
+    # Add template fields with content
+    for field in template.fields:
+        field_name = field.get('name', '')
+        field_label = field.get('label', field_name)
+        field_value = document.content.get(field_name, 'Non renseigné')
+        
+        html_content += f"""
+            <div class="field">
+                <div class="field-label">{field_label}:</div>
+                <div class="field-value">{field_value}</div>
+            </div>
+        """
+    
+    # Add Sydonia data if available
+    if document.sydonia_data:
+        html_content += f"""
+        <div class="section">
+            <div class="section-title">Données Sydonia</div>
+            <div class="field">
+                <div class="field-label">N° Déclaration:</div>
+                <div class="field-value">{document.sydonia_data.get('declaration_id', 'N/A')}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Importateur:</div>
+                <div class="field-value">{document.sydonia_data.get('importer_name', 'N/A')}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Description marchandises:</div>
+                <div class="field-value">{document.sydonia_data.get('goods_description', 'N/A')}</div>
+            </div>
+        </div>
+        """
+    
+    # Add history
+    html_content += """
+        <div class="section">
+            <div class="section-title">Historique des Actions</div>
+            <div class="history">
+    """
+    
+    for action in document.history:
+        action_time = action.timestamp.strftime('%d/%m/%Y à %H:%M')
+        html_content += f"""
+            <div class="history-item">
+                <strong>{action.action}</strong> par {action.user_name} le {action_time}
+            </div>
+        """
+    
+    html_content += f"""
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Document généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y à %H:%M')} UTC</p>
+            <p>Administration Douanière de Nouvelle-Calédonie - Système de Gestion des Actes Administratifs</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Generate PDF
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    try:
+        HTML(string=html_content).write_pdf(temp_file.name)
+        return temp_file.name
+    except Exception as e:
+        logger.error(f"PDF generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
+
+@api_router.get("/documents/{document_id}/pdf")
+async def download_document_pdf(
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    # Get document
+    document = await db.documents.find_one({"id": document_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc_obj = Document(**document)
+    
+    # Check permissions
+    if (current_user.role == UserRole.DRAFTING_AGENT and 
+        doc_obj.created_by != current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to download this document")
+    
+    # Get template
+    template = await db.templates.find_one({"id": doc_obj.template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template_obj = DocumentTemplate(**template)
+    
+    # Generate PDF
+    pdf_path = generate_document_pdf(doc_obj, template_obj)
+    
+    # Return file
+    filename = f"{doc_obj.title.replace(' ', '_')}_{doc_obj.id[:8]}.pdf"
+    return FileResponse(
+        path=pdf_path,
+        filename=filename,
+        media_type='application/pdf'
+    )
+
 # Mock Sydonia API endpoint
 @api_router.get("/sydonia/declaration/{declaration_id}")
 async def get_sydonia_declaration(
