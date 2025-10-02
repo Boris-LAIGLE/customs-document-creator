@@ -1169,6 +1169,85 @@ const ControlDetailsDialog = ({ control, onClose, onRefresh }) => {
   );
 };
 
+// Stats View Component  
+const StatsView = ({ documents, controls = [] }) => {
+  const documentStatusCounts = documents.reduce((acc, doc) => {
+    acc[doc.status] = (acc[doc.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const controlStatusCounts = controls.reduce((acc, control) => {
+    acc[control.status] = (acc[control.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const documentStats = [
+    { label: 'Total Documents', value: documents.length, icon: FileText, color: 'bg-blue-500' },
+    { label: 'Brouillons', value: documentStatusCounts.draft || 0, icon: Clock, color: 'bg-slate-500' },
+    { label: 'En contrôle', value: documentStatusCounts.under_control || 0, icon: AlertTriangle, color: 'bg-orange-500' },
+    { label: 'Validés', value: documentStatusCounts.validated || 0, icon: CheckCircle, color: 'bg-green-500' }
+  ];
+
+  const controlStats = [
+    { label: 'Total Contrôles', value: controls.length, icon: Settings, color: 'bg-purple-500' },
+    { label: 'En cours', value: controlStatusCounts.in_progress || 0, icon: PlayCircle, color: 'bg-blue-500' },
+    { label: 'Non-conformes', value: controlStatusCounts.non_compliant || 0, icon: XCircle, color: 'bg-red-500' },
+    { label: 'Terminés', value: (controlStatusCounts.completed || 0) + (controlStatusCounts.fine_issued || 0), icon: CheckCircle, color: 'bg-green-500' }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-slate-800">Statistiques</h2>
+      
+      <div className="space-y-8">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-700 mb-4">Documents</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {documentStats.map((stat, index) => (
+              <Card key={index}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">{stat.label}</p>
+                      <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+                    </div>
+                    <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
+                      <stat.icon className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {controls.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-slate-700 mb-4">Contrôles Douaniers</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {controlStats.map((stat, index) => (
+                <Card key={index}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-600">{stat.label}</p>
+                        <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+                      </div>
+                      <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
+                        <stat.icon className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 const App = () => {
   return (
