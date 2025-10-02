@@ -737,42 +737,435 @@ const TemplatesView = ({ templates }) => {
   );
 };
 
-// Stats View Component  
-const StatsView = ({ documents }) => {
-  const statusCounts = documents.reduce((acc, doc) => {
-    acc[doc.status] = (acc[doc.status] || 0) + 1;
-    return acc;
-  }, {});
+// Controls View Component
+const ControlsView = ({ controls, onRefresh }) => {
+  const { user } = useAuth();
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedControl, setSelectedControl] = useState(null);
+  const [newControl, setNewControl] = useState({
+    declaration_id: ''
+  });
 
-  const stats = [
-    { label: 'Total Documents', value: documents.length, icon: FileText, color: 'bg-blue-500' },
-    { label: 'Brouillons', value: statusCounts.draft || 0, icon: Clock, color: 'bg-slate-500' },
-    { label: 'En contrôle', value: statusCounts.under_control || 0, icon: AlertTriangle, color: 'bg-orange-500' },
-    { label: 'Validés', value: statusCounts.validated || 0, icon: CheckCircle, color: 'bg-green-500' }
-  ];
+  const canCreateControl = user.role === 'control_officer' || user.role === 'validation_officer';
+
+  const handleCreateControl = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/controls`, newControl);
+      setShowCreateDialog(false);
+      setNewControl({ declaration_id: '' });
+      onRefresh();
+      alert('Contrôle créé avec succès');
+    } catch (error) {
+      console.error('Error creating control:', error);
+      alert('Erreur lors de la création du contrôle');
+    }
+  };
+
+  const getControlStatusBadge = (status) => {
+    const statusConfig = {
+      initiated: { color: 'bg-slate-100 text-slate-700', label: 'Initié' },
+      in_progress: { color: 'bg-blue-100 text-blue-700', label: 'En cours' },
+      compliance_check: { color: 'bg-yellow-100 text-yellow-700', label: 'Vérification' },
+      non_compliant: { color: 'bg-red-100 text-red-700', label: 'Non-conforme' },
+      certificate_generated: { color: 'bg-purple-100 text-purple-700', label: 'Certificat généré' },
+      declarant_validation: { color: 'bg-indigo-100 text-indigo-700', label: 'En validation' },
+      completed: { color: 'bg-green-100 text-green-700', label: 'Terminé' },
+      fine_issued: { color: 'bg-red-100 text-red-700', label: 'Amende émise' }
+    };
+    
+    const config = statusConfig[status] || statusConfig.initiated;
+    return (
+      <Badge className={`${config.color} border-0`}>
+        {config.label}
+      </Badge>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800">Statistiques</h2>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{stat.label}</p>
-                  <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-slate-800">Contrôles Douaniers</h2>
+        {canCreateControl && (
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau Contrôle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Initier un nouveau contrôle</DialogTitle>
+                <DialogDescription>
+                  Saisissez le numéro de déclaration Sydonia
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateControl} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="declaration_id">N° Déclaration Sydonia</Label>
+                  <Input
+                    id="declaration_id"
+                    value={newControl.declaration_id}
+                    onChange={(e) => setNewControl({...newControl, declaration_id: e.target.value})}
+                    placeholder="Ex: D2024/15847"
+                    required
+                  />
                 </div>
-                <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                  <stat.icon className="h-6 w-6 text-white" />
-                </div>
-              </div>
+                <Button type="submit" className="w-full">
+                  Créer le contrôle
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      <div className="grid gap-4">
+        {controls.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Settings className="h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-medium text-slate-600 mb-2">Aucun contrôle</h3>
+              <p className="text-slate-500 text-center">
+                {canCreateControl ? 'Initiez votre premier contrôle pour commencer' : 'Aucun contrôle à afficher'}
+              </p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          controls.map(control => (
+            <Card key={control.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-1">
+                      Déclaration {control.declaration_id}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      Agent: {control.control_officer_name} • {new Date(control.created_at).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getControlStatusBadge(control.status)}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-slate-600">
+                    <span>Mis à jour: {new Date(control.updated_at).toLocaleDateString('fr-FR')}</span>
+                    {control.fiscal_impact && (
+                      <>
+                        <span>•</span>
+                        <span className="font-medium text-red-600">
+                          Impact: {control.fiscal_impact.toLocaleString()} XPF
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedControl(control)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Détails
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
+
+      {/* Control Details Dialog */}
+      {selectedControl && (
+        <ControlDetailsDialog 
+          control={selectedControl} 
+          onClose={() => setSelectedControl(null)}
+          onRefresh={onRefresh}
+        />
+      )}
     </div>
+  );
+};
+
+// Control Details Dialog Component
+const ControlDetailsDialog = ({ control, onClose, onRefresh }) => {
+  const { user } = useAuth();
+  const [complianceChecks, setComplianceChecks] = useState(control.compliance_checks || []);
+  const [nonComplianceData, setNonComplianceData] = useState({
+    non_compliance_type: '',
+    non_compliance_details: '',
+    fiscal_impact: '',
+    applicable_regulation: ''
+  });
+  const [declarantValidation, setDeclarantValidation] = useState({
+    acknowledged: false,
+    fine_decision: ''
+  });
+
+  const canEdit = user.role === 'control_officer' || user.role === 'validation_officer';
+
+  const handleComplianceUpdate = async () => {
+    try {
+      await axios.put(`${API}/controls/${control.id}/compliance`, {
+        compliance_checks: complianceChecks
+      });
+      onRefresh();
+      alert('Vérifications de conformité mises à jour');
+    } catch (error) {
+      console.error('Error updating compliance:', error);
+      alert('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleNonComplianceSubmit = async () => {
+    try {
+      await axios.put(`${API}/controls/${control.id}/non-compliance`, {
+        ...nonComplianceData,
+        fiscal_impact: parseFloat(nonComplianceData.fiscal_impact)
+      });
+      onRefresh();
+      alert('Certificat de visite généré');
+    } catch (error) {
+      console.error('Error updating non-compliance:', error);
+      alert('Erreur lors de la génération du certificat');
+    }
+  };
+
+  const handleDeclarantValidation = async () => {
+    try {
+      await axios.post(`${API}/controls/${control.id}/declarant-validation`, declarantValidation);
+      onRefresh();
+      alert('Validation du déclarant enregistrée');
+    } catch (error) {
+      console.error('Error validating:', error);
+      alert('Erreur lors de la validation');
+    }
+  };
+
+  const downloadCertificate = async () => {
+    try {
+      const response = await axios.get(`${API}/controls/${control.id}/certificate`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Certificat_Visite_${control.declaration_id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Contrôle - Déclaration {control.declaration_id}</DialogTitle>
+          <DialogDescription>
+            Agent: {control.control_officer_name} • Statut: {control.status}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="compliance" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="compliance">Conformité</TabsTrigger>
+            <TabsTrigger value="non-compliance">Non-conformité</TabsTrigger>
+            <TabsTrigger value="validation">Validation</TabsTrigger>
+            <TabsTrigger value="history">Historique</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="compliance" className="space-y-4">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Vérifications de conformité</h3>
+              {complianceChecks.map((check, index) => (
+                <div key={check.id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium">{check.item}</p>
+                    {check.notes && (
+                      <p className="text-sm text-slate-600 mt-1">{check.notes}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Select 
+                      value={check.status} 
+                      onValueChange={(value) => {
+                        const updated = [...complianceChecks];
+                        updated[index] = {...check, status: value};
+                        setComplianceChecks(updated);
+                      }}
+                      disabled={!canEdit}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">En attente</SelectItem>
+                        <SelectItem value="compliant">Conforme</SelectItem>
+                        <SelectItem value="non_compliant">Non-conforme</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
+              {canEdit && (
+                <Button onClick={handleComplianceUpdate} className="w-full">
+                  Mettre à jour les vérifications
+                </Button>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="non-compliance" className="space-y-4">
+            {control.status === 'non_compliant' && canEdit ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Détails de la non-conformité</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Type de non-conformité</Label>
+                    <Select value={nonComplianceData.non_compliance_type} onValueChange={(value) => 
+                      setNonComplianceData({...nonComplianceData, non_compliance_type: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="species">Espèce</SelectItem>
+                        <SelectItem value="origin">Origine</SelectItem>
+                        <SelectItem value="value">Valeur</SelectItem>
+                        <SelectItem value="classification">Classification</SelectItem>
+                        <SelectItem value="documentation">Documentation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Impact fiscal (XPF)</Label>
+                    <Input
+                      type="number"
+                      value={nonComplianceData.fiscal_impact}
+                      onChange={(e) => setNonComplianceData({...nonComplianceData, fiscal_impact: e.target.value})}
+                      placeholder="Montant en XPF"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Détails</Label>
+                  <Textarea
+                    value={nonComplianceData.non_compliance_details}
+                    onChange={(e) => setNonComplianceData({...nonComplianceData, non_compliance_details: e.target.value})}
+                    placeholder="Décrivez la non-conformité constatée..."
+                  />
+                </div>
+                <div>
+                  <Label>Réglementation applicable</Label>
+                  <Input
+                    value={nonComplianceData.applicable_regulation}
+                    onChange={(e) => setNonComplianceData({...nonComplianceData, applicable_regulation: e.target.value})}
+                    placeholder="Ex: Article 215 du Code des Douanes"
+                  />
+                </div>
+                <Button onClick={handleNonComplianceSubmit} className="w-full bg-red-600 hover:bg-red-700">
+                  Générer le certificat de visite
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {control.certificate_path && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-medium text-yellow-800 mb-2">Certificat de visite généré</h4>
+                    <p className="text-sm text-yellow-700 mb-3">
+                      Type: {control.non_compliance_type} • Impact: {control.fiscal_impact?.toLocaleString()} XPF
+                    </p>
+                    <Button onClick={downloadCertificate} variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Télécharger le certificat
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="validation" className="space-y-4">
+            {control.status === 'certificate_generated' && canEdit ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Validation du déclarant</h3>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Checkbox
+                      id="acknowledged"
+                      checked={declarantValidation.acknowledged}
+                      onCheckedChange={(checked) => 
+                        setDeclarantValidation({...declarantValidation, acknowledged: checked})}
+                    />
+                    <Label htmlFor="acknowledged">
+                      Le déclarant a signé et reconnu le certificat de visite
+                    </Label>
+                  </div>
+                  
+                  {declarantValidation.acknowledged && (
+                    <div className="space-y-4">
+                      <Label>Décision</Label>
+                      <Select value={declarantValidation.fine_decision} onValueChange={(value) => 
+                        setDeclarantValidation({...declarantValidation, fine_decision: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir la décision" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pass_over">Passer outre</SelectItem>
+                          <SelectItem value="customs_fine">Amende douanière</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                
+                {declarantValidation.acknowledged && declarantValidation.fine_decision && (
+                  <Button onClick={handleDeclarantValidation} className="w-full">
+                    Finaliser le contrôle
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-medium text-green-800">Contrôle finalisé</h4>
+                <p className="text-sm text-green-700 mt-1">
+                  Décision: {control.fine_decision === 'pass_over' ? 'Passer outre' : 'Amende douanière'}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            <h3 className="text-lg font-semibold">Historique du contrôle</h3>
+            <div className="space-y-3">
+              {control.history?.map((action, index) => (
+                <div key={index} className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">{action.action}</p>
+                      <p className="text-sm text-slate-600">Par {action.user_name}</p>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {new Date(action.timestamp).toLocaleString('fr-FR')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };
 
