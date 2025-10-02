@@ -418,11 +418,17 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-96">
+          <TabsList className={`grid w-full ${user.role === 'control_officer' || user.role === 'validation_officer' ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-96'}`}>
             <TabsTrigger value="documents" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Documents</span>
             </TabsTrigger>
+            {(user.role === 'control_officer' || user.role === 'validation_officer') && (
+              <TabsTrigger value="controls" className="flex items-center space-x-2">
+                <Settings className="h-4 w-4" />
+                <span>Contrôles</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="templates" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span>Modèles</span>
@@ -437,12 +443,18 @@ const Dashboard = () => {
             <DocumentsView documents={documents} templates={templates} onRefresh={fetchData} />
           </TabsContent>
 
+          {(user.role === 'control_officer' || user.role === 'validation_officer') && (
+            <TabsContent value="controls" className="space-y-6">
+              <ControlsView controls={controls} onRefresh={fetchData} />
+            </TabsContent>
+          )}
+
           <TabsContent value="templates" className="space-y-6">
             <TemplatesView templates={templates} onRefresh={fetchData} />
           </TabsContent>
 
           <TabsContent value="stats" className="space-y-6">
-            <StatsView documents={documents} />
+            <StatsView documents={documents} controls={controls} />
           </TabsContent>
         </Tabs>
       </main>
