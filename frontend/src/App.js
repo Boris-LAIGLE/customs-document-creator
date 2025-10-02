@@ -1237,7 +1237,6 @@ const StatsView = ({ documents, controls = [] }) => {
                         <stat.icon className="h-6 w-6 text-white" />
                       </div>
                     </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}
