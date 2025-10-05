@@ -465,6 +465,12 @@ const Dashboard = () => {
             <TemplatesView templates={templates} onRefresh={fetchData} />
           </TabsContent>
 
+          {user.role === 'moa' && (
+            <TabsContent value="admin" className="space-y-6">
+              <AdminView templates={templates} onRefresh={fetchData} />
+            </TabsContent>
+          )}
+
           <TabsContent value="stats" className="space-y-6">
             <StatsView documents={documents} controls={controls} />
           </TabsContent>
