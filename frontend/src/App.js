@@ -1200,21 +1200,21 @@ const StatsView = ({ documents, controls = [] }) => {
       <h2 className="text-2xl font-bold text-slate-800">Statistiques</h2>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {documentStats.map((stat, index) => (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">{stat.label}</p>
-                      <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
-                    </div>
-                    <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                      <stat.icon className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {documentStats.map((stat, index) => (
+          <Card key={index}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{stat.label}</p>
+                  <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+                </div>
+                <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
+                  <stat.icon className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
   );
 };
