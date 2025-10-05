@@ -1201,7 +1201,6 @@ const StatsView = ({ documents, controls = [] }) => {
       
       <div className="space-y-8">
         <div>
-          <h3 className="text-lg font-semibold text-slate-700 mb-4">Documents</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {documentStats.map((stat, index) => (
               <Card key={index}>
