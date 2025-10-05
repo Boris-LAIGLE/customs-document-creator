@@ -1132,11 +1132,101 @@ async def get_templates(current_user: User = Depends(get_current_user)):
 @api_router.post("/templates", response_model=DocumentTemplate)
 async def create_template(
     template_data: DocumentTemplate, 
-    current_user: User = Depends(require_role([UserRole.VALIDATION_OFFICER]))
+    current_user: User = Depends(require_role([UserRole.VALIDATION_OFFICER, UserRole.MOA]))
 ):
     template_dict = template_data.dict()
     await db.templates.insert_one(template_dict)
     return template_data
+
+@api_router.put("/templates/{template_id}", response_model=DocumentTemplate)
+async def update_template(
+    template_id: str,
+    template_data: DocumentTemplate,
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    template_dict = template_data.dict()
+    await db.templates.update_one(
+        {"id": template_id},
+        {"$set": template_dict}
+    )
+    updated_template = await db.templates.find_one({"id": template_id})
+    if not updated_template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return DocumentTemplate(**updated_template)
+
+@api_router.delete("/templates/{template_id}")
+async def delete_template(
+    template_id: str,
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    result = await db.templates.delete_one({"id": template_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"message": "Template deleted successfully"}
+
+# Document Type Management for MOA
+class DocumentTypeCreate(BaseModel):
+    name: str
+    description: str
+    code: str
+
+class DocumentTypeModel(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    code: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str
+
+@api_router.get("/document-types", response_model=List[DocumentTypeModel])
+async def get_document_types(current_user: User = Depends(get_current_user)):
+    doc_types = await db.document_types.find().to_list(1000)
+    return [DocumentTypeModel(**doc_type) for doc_type in doc_types]
+
+@api_router.post("/document-types", response_model=DocumentTypeModel)
+async def create_document_type(
+    doc_type_data: DocumentTypeCreate,
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    # Check if code already exists
+    existing = await db.document_types.find_one({"code": doc_type_data.code})
+    if existing:
+        raise HTTPException(status_code=400, detail="Document type code already exists")
+    
+    doc_type = DocumentTypeModel(
+        **doc_type_data.dict(),
+        created_by=current_user.id
+    )
+    
+    await db.document_types.insert_one(doc_type.dict())
+    return doc_type
+
+@api_router.put("/document-types/{doc_type_id}", response_model=DocumentTypeModel)
+async def update_document_type(
+    doc_type_id: str,
+    doc_type_data: DocumentTypeCreate,
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    doc_type_dict = doc_type_data.dict()
+    await db.document_types.update_one(
+        {"id": doc_type_id},
+        {"$set": doc_type_dict}
+    )
+    
+    updated_doc_type = await db.document_types.find_one({"id": doc_type_id})
+    if not updated_doc_type:
+        raise HTTPException(status_code=404, detail="Document type not found")
+    return DocumentTypeModel(**updated_doc_type)
+
+@api_router.delete("/document-types/{doc_type_id}")
+async def delete_document_type(
+    doc_type_id: str,
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    result = await db.document_types.delete_one({"id": doc_type_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Document type not found")
+    return {"message": "Document type deleted successfully"}
 
 # Documents endpoints
 @api_router.get("/documents", response_model=List[Document])
