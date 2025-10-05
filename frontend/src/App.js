@@ -252,6 +252,7 @@ const LoginPage = () => {
                     <SelectItem value="drafting_agent">Agent de rédaction</SelectItem>
                     <SelectItem value="control_officer">Agent de contrôle</SelectItem>
                     <SelectItem value="validation_officer">Agent de validation</SelectItem>
+                    <SelectItem value="moa">Administrateur MOA</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
