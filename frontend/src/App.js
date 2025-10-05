@@ -1215,8 +1215,7 @@ const StatsView = ({ documents, controls = [] }) => {
                 </CardContent>
               </Card>
             ))}
-          </div>
-    </div>
+      </div>
   );
 };
 
