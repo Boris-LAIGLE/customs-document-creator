@@ -755,6 +755,367 @@ const TemplatesView = ({ templates }) => {
   );
 };
 
+// Admin View Component for MOA
+const AdminView = ({ templates, onRefresh }) => {
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [showCreateDocType, setShowCreateDocType] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    document_type: 'customs_report',
+    fields: [],
+    checklist: []
+  });
+  const [newDocType, setNewDocType] = useState({
+    name: '',
+    description: '',
+    code: ''
+  });
+  const [newField, setNewField] = useState({
+    name: '',
+    label: '',
+    type: 'text',
+    required: false
+  });
+  const [newCheckItem, setNewCheckItem] = useState('');
+
+  useEffect(() => {
+    fetchDocumentTypes();
+  }, []);
+
+  const fetchDocumentTypes = async () => {
+    try {
+      const response = await axios.get(`${API}/document-types`);
+      setDocumentTypes(response.data);
+    } catch (error) {
+      console.error('Error fetching document types:', error);
+    }
+  };
+
+  const handleCreateTemplate = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/templates`, newTemplate);
+      setShowCreateTemplate(false);
+      setNewTemplate({
+        name: '',
+        document_type: 'customs_report',
+        fields: [],
+        checklist: []
+      });
+      onRefresh();
+      alert('Modèle créé avec succès');
+    } catch (error) {
+      console.error('Error creating template:', error);
+      alert('Erreur lors de la création du modèle');
+    }
+  };
+
+  const handleCreateDocType = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/document-types`, newDocType);
+      setShowCreateDocType(false);
+      setNewDocType({
+        name: '',
+        description: '',
+        code: ''
+      });
+      fetchDocumentTypes();
+      alert('Type de document créé avec succès');
+    } catch (error) {
+      console.error('Error creating document type:', error);
+      alert('Erreur lors de la création du type de document');
+    }
+  };
+
+  const addField = () => {
+    if (newField.name && newField.label) {
+      setNewTemplate({
+        ...newTemplate,
+        fields: [...newTemplate.fields, { ...newField }]
+      });
+      setNewField({
+        name: '',
+        label: '',
+        type: 'text',
+        required: false
+      });
+    }
+  };
+
+  const removeField = (index) => {
+    const updatedFields = newTemplate.fields.filter((_, i) => i !== index);
+    setNewTemplate({
+      ...newTemplate,
+      fields: updatedFields
+    });
+  };
+
+  const addCheckItem = () => {
+    if (newCheckItem.trim()) {
+      setNewTemplate({
+        ...newTemplate,
+        checklist: [...newTemplate.checklist, newCheckItem.trim()]
+      });
+      setNewCheckItem('');
+    }
+  };
+
+  const removeCheckItem = (index) => {
+    const updatedChecklist = newTemplate.checklist.filter((_, i) => i !== index);
+    setNewTemplate({
+      ...newTemplate,
+      checklist: updatedChecklist
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-slate-800">Administration MOA</h2>
+      
+      <Tabs defaultValue="templates" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="templates">Gestion des Modèles</TabsTrigger>
+          <TabsTrigger value="doc-types">Types de Documents</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Modèles de Documents</h3>
+            <Dialog open={showCreateTemplate} onOpenChange={setShowCreateTemplate}>
+              <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau Modèle
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Créer un nouveau modèle</DialogTitle>
+                  <DialogDescription>
+                    Définissez les champs et contrôles pour ce modèle
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <form onSubmit={handleCreateTemplate} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Nom du modèle</Label>
+                      <Input
+                        value={newTemplate.name}
+                        onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Type de document</Label>
+                      <Select value={newTemplate.document_type} onValueChange={(value) => 
+                        setNewTemplate({...newTemplate, document_type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="customs_report">Rapport douanier</SelectItem>
+                          <SelectItem value="administrative_act">Acte administratif</SelectItem>
+                          <SelectItem value="violation_report">Rapport d'infraction</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h4 className="font-medium mb-3">Champs du modèle</h4>
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      <Input
+                        placeholder="Nom du champ"
+                        value={newField.name}
+                        onChange={(e) => setNewField({...newField, name: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Libellé"
+                        value={newField.label}
+                        onChange={(e) => setNewField({...newField, label: e.target.value})}
+                      />
+                      <Select value={newField.type} onValueChange={(value) => setNewField({...newField, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Texte</SelectItem>
+                          <SelectItem value="textarea">Zone de texte</SelectItem>
+                          <SelectItem value="number">Nombre</SelectItem>
+                          <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="select">Liste déroulante</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" onClick={addField} size="sm">Ajouter</Button>
+                    </div>
+
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {newTemplate.fields.map((field, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                          <span className="text-sm">
+                            <strong>{field.label}</strong> ({field.type})
+                          </span>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => removeField(index)}
+                          >
+                            <XCircle className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h4 className="font-medium mb-3">Liste de contrôle</h4>
+                    <div className="flex gap-2 mb-3">
+                      <Input
+                        placeholder="Élément de contrôle"
+                        value={newCheckItem}
+                        onChange={(e) => setNewCheckItem(e.target.value)}
+                      />
+                      <Button type="button" onClick={addCheckItem} size="sm">Ajouter</Button>
+                    </div>
+
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {newTemplate.checklist.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                          <span className="text-sm">{item}</span>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => removeCheckItem(index)}
+                          >
+                            <XCircle className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full">
+                    Créer le modèle
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {templates.map(template => (
+              <Card key={template.id} className="card-hover">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{template.name}</CardTitle>
+                      <CardDescription>
+                        Type: {template.document_type} • {template.fields.length} champs
+                      </CardDescription>
+                    </div>
+                    <div className="flex space-x-1">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="doc-types" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Types de Documents</h3>
+            <Dialog open={showCreateDocType} onOpenChange={setShowCreateDocType}>
+              <DialogTrigger asChild>
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau Type
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Créer un type de document</DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleCreateDocType} className="space-y-4">
+                  <div>
+                    <Label>Nom</Label>
+                    <Input
+                      value={newDocType.name}
+                      onChange={(e) => setNewDocType({...newDocType, name: e.target.value})}
+                      placeholder="Ex: Certificat d'origine"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Code</Label>
+                    <Input
+                      value={newDocType.code}
+                      onChange={(e) => setNewDocType({...newDocType, code: e.target.value.toUpperCase()})}
+                      placeholder="Ex: CERT_ORIGIN"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea
+                      value={newDocType.description}
+                      onChange={(e) => setNewDocType({...newDocType, description: e.target.value})}
+                      placeholder="Description du type de document"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Créer le type
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {documentTypes.map(docType => (
+              <Card key={docType.id}>
+                <CardHeader>
+                  <CardTitle className="text-base">{docType.name}</CardTitle>
+                  <CardDescription className="text-sm">
+                    Code: {docType.code}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-600">{docType.description}</p>
+                  <div className="flex justify-end space-x-2 mt-3">
+                    <Button variant="outline" size="sm">
+                      Modifier
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-red-600">
+                      Supprimer
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
 // Controls View Component
 const ControlsView = ({ controls, onRefresh }) => {
   const { user } = useAuth();
