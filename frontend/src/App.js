@@ -368,7 +368,8 @@ const Dashboard = () => {
     const roles = {
       drafting_agent: 'Agent de rédaction',
       control_officer: 'Agent de contrôle',
-      validation_officer: 'Agent de validation'
+      validation_officer: 'Agent de validation',
+      moa: 'Administrateur MOA'
     };
     return roles[role] || role;
   };
