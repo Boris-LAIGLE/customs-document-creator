@@ -46,6 +46,7 @@ class UserRole(str, Enum):
     DRAFTING_AGENT = "drafting_agent"
     CONTROL_OFFICER = "control_officer" 
     VALIDATION_OFFICER = "validation_officer"
+    MOA = "moa"  # Management Operations Administrator
 
 class DocumentStatus(str, Enum):
     DRAFT = "draft"
