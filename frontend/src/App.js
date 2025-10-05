@@ -420,7 +420,11 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className={`grid w-full ${user.role === 'control_officer' || user.role === 'validation_officer' ? 'grid-cols-4 lg:w-[500px]' : 'grid-cols-3 lg:w-96'}`}>
+          <TabsList className={`grid w-full ${
+            user.role === 'moa' ? 'grid-cols-5 lg:w-[600px]' :
+            (user.role === 'control_officer' || user.role === 'validation_officer') ? 'grid-cols-4 lg:w-[500px]' : 
+            'grid-cols-3 lg:w-96'
+          }`}>
             <TabsTrigger value="documents" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Documents</span>
@@ -435,6 +439,12 @@ const Dashboard = () => {
               <Users className="h-4 w-4" />
               <span>Modèles</span>
             </TabsTrigger>
+            {user.role === 'moa' && (
+              <TabsTrigger value="admin" className="flex items-center space-x-2">
+                <Settings className="h-4 w-4" />
+                <span>Administration</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="stats" className="flex items-center space-x-2">
               <CheckCircle className="h-4 w-4" />
               <span>Statistiques</span>
