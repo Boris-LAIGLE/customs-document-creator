@@ -1157,8 +1157,16 @@ async def update_template(
 @api_router.delete("/templates/{template_id}")
 async def delete_template(
     template_id: str,
-    current_user: User = Depends(require_role([UserRole.MOA]))
+    current_user: User = Depends(require_role([UserRole.MOA, UserRole.VALIDATION_OFFICER]))
 ):
+    # Check if template is being used by existing documents
+    documents_using_template = await db.documents.count_documents({"template_id": template_id})
+    if documents_using_template > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete template: {documents_using_template} document(s) are using this template"
+        )
+    
     result = await db.templates.delete_one({"id": template_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Template not found")
