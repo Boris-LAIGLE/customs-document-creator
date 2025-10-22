@@ -1237,13 +1237,26 @@ async def delete_document_type(
         raise HTTPException(status_code=404, detail="Document type not found")
     
     # Check if document type is being used by existing documents or templates
-    documents_count = await db.documents.count_documents({"document_type": doc_type["code"]})
-    templates_count = await db.templates.count_documents({"document_type": doc_type["code"]})
+    # We need to check both the custom code and any enum values that might match
+    code_variations = [
+        doc_type["code"],
+        doc_type["code"].lower(),
+        doc_type["name"].lower().replace(" ", "_").replace("'", "")
+    ]
     
-    if documents_count > 0 or templates_count > 0:
+    total_documents = 0
+    total_templates = 0
+    
+    for code_var in code_variations:
+        documents_count = await db.documents.count_documents({"document_type": code_var})
+        templates_count = await db.templates.count_documents({"document_type": code_var})
+        total_documents += documents_count
+        total_templates += templates_count
+    
+    if total_documents > 0 or total_templates > 0:
         raise HTTPException(
             status_code=400, 
-            detail=f"Cannot delete document type: {documents_count} document(s) and {templates_count} template(s) are using this type"
+            detail=f"Cannot delete document type: {total_documents} document(s) and {total_templates} template(s) are using this type"
         )
     
     result = await db.document_types.delete_one({"id": doc_type_id})
