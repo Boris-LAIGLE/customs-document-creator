@@ -1135,11 +1135,21 @@ const AdminView = ({ templates, onRefresh }) => {
                       </CardDescription>
                     </div>
                     <div className="flex space-x-1">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditTemplate(template)}
+                        className="hover:bg-blue-50"
+                      >
                         <Settings className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteTemplate(template.id, template.name)}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        <XCircle className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
