@@ -755,6 +755,90 @@ const TemplatesView = ({ templates }) => {
   );
 };
 
+// Document Type Card Component
+const DocumentTypeCard = ({ docType, onDelete, onEdit }) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleDelete = () => {
+    onDelete(docType.id, docType.name);
+    setShowDeleteDialog(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{docType.name}</CardTitle>
+        <CardDescription className="text-sm">
+          Code: {docType.code}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-slate-600 mb-4">{docType.description}</p>
+        <div className="flex justify-end space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onEdit(docType)}
+            className="hover:bg-blue-50"
+          >
+            <Settings className="h-3 w-3 mr-1" />
+            Modifier
+          </Button>
+          
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-red-600 hover:bg-red-50 hover:border-red-200"
+              >
+                <XCircle className="h-3 w-3 mr-1" />
+                Supprimer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center text-red-600">
+                  <AlertTriangle className="h-5 w-5 mr-2" />
+                  Confirmer la suppression
+                </DialogTitle>
+                <DialogDescription>
+                  Êtes-vous sûr de vouloir supprimer le type de document <strong>"{docType.name}"</strong> ?
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  <strong>Attention :</strong> Cette action est irréversible et pourrait affecter 
+                  les documents et modèles existants utilisant ce type.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDeleteDialog(false)}
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Supprimer définitivement
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Admin View Component for MOA
 const AdminView = ({ templates, onRefresh }) => {
   const [documentTypes, setDocumentTypes] = useState([]);
