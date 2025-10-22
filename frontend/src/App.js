@@ -829,6 +829,34 @@ const AdminView = ({ templates, onRefresh }) => {
     }
   };
 
+  const handleDeleteDocType = async (docTypeId, docTypeName) => {
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le type de document "${docTypeName}" ?\n\n` +
+      'Cette action est irréversible et pourrait affecter les documents existants.'
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`${API}/document-types/${docTypeId}`);
+      fetchDocumentTypes();
+      alert('Type de document supprimé avec succès');
+    } catch (error) {
+      console.error('Error deleting document type:', error);
+      const errorMsg = error.response?.data?.detail || 'Erreur lors de la suppression';
+      alert(`Erreur: ${errorMsg}`);
+    }
+  };
+
+  const handleEditDocType = (docType) => {
+    setNewDocType({
+      name: docType.name,
+      description: docType.description,
+      code: docType.code
+    });
+    setShowCreateDocType(true);
+  };
+
   const addField = () => {
     if (newField.name && newField.label) {
       setNewTemplate({
