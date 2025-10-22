@@ -1231,9 +1231,22 @@ async def delete_document_type(
     doc_type_id: str,
     current_user: User = Depends(require_role([UserRole.MOA]))
 ):
-    result = await db.document_types.delete_one({"id": doc_type_id})
-    if result.deleted_count == 0:
+    # Get the document type first to check its code
+    doc_type = await db.document_types.find_one({"id": doc_type_id})
+    if not doc_type:
         raise HTTPException(status_code=404, detail="Document type not found")
+    
+    # Check if document type is being used by existing documents or templates
+    documents_count = await db.documents.count_documents({"document_type": doc_type["code"]})
+    templates_count = await db.templates.count_documents({"document_type": doc_type["code"]})
+    
+    if documents_count > 0 or templates_count > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete document type: {documents_count} document(s) and {templates_count} template(s) are using this type"
+        )
+    
+    result = await db.document_types.delete_one({"id": doc_type_id})
     return {"message": "Document type deleted successfully"}
 
 # Documents endpoints
