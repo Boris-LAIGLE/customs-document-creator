@@ -1089,25 +1089,12 @@ const AdminView = ({ templates, onRefresh }) => {
 
           <div className="grid gap-4 md:grid-cols-3">
             {documentTypes.map(docType => (
-              <Card key={docType.id}>
-                <CardHeader>
-                  <CardTitle className="text-base">{docType.name}</CardTitle>
-                  <CardDescription className="text-sm">
-                    Code: {docType.code}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-600">{docType.description}</p>
-                  <div className="flex justify-end space-x-2 mt-3">
-                    <Button variant="outline" size="sm">
-                      Modifier
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-red-600">
-                      Supprimer
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <DocumentTypeCard 
+                key={docType.id} 
+                docType={docType} 
+                onDelete={handleDeleteDocType}
+                onEdit={handleEditDocType}
+              />
             ))}
           </div>
         </TabsContent>
