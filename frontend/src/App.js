@@ -941,6 +941,35 @@ const AdminView = ({ templates, onRefresh }) => {
     setShowCreateDocType(true);
   };
 
+  const handleDeleteTemplate = async (templateId, templateName) => {
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le modèle "${templateName}" ?\n\n` +
+      'Cette action est irréversible et pourrait affecter les documents existants.'
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`${API}/templates/${templateId}`);
+      onRefresh();
+      alert('Modèle supprimé avec succès');
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      const errorMsg = error.response?.data?.detail || 'Erreur lors de la suppression';
+      alert(`Erreur: ${errorMsg}`);
+    }
+  };
+
+  const handleEditTemplate = (template) => {
+    setNewTemplate({
+      name: template.name,
+      document_type: template.document_type,
+      fields: [...template.fields],
+      checklist: [...template.checklist]
+    });
+    setShowCreateTemplate(true);
+  };
+
   const addField = () => {
     if (newField.name && newField.label) {
       setNewTemplate({
