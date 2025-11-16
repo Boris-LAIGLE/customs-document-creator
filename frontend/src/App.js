@@ -839,6 +839,240 @@ const DocumentTypeCard = ({ docType, onDelete, onEdit }) => {
   );
 };
 
+// Backup Management View Component
+const BackupManagementView = ({ onRefresh }) => {
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [documents, setDocuments] = useState([]);
+
+  useEffect(() => {
+    fetchBackupStatus();
+    fetchDocuments();
+  }, []);
+
+  const fetchBackupStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/backup/status`);
+      setBackupStatus(response.data);
+    } catch (error) {
+      console.error('Error fetching backup status:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await axios.get(`${API}/documents`);
+      setDocuments(response.data);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
+
+  const handleBatchBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      const response = await axios.post(`${API}/backup/batch-documents`);
+      alert(`Sauvegarde terminée: ${response.data.success_count} réussies, ${response.data.failed_count} échouées`);
+      fetchBackupStatus();
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error during batch backup:', error);
+      alert('Erreur lors de la sauvegarde en lot');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleSingleBackup = async (documentId, documentTitle) => {
+    try {
+      await axios.post(`${API}/documents/${documentId}/backup-pdf`);
+      alert(`Document "${documentTitle}" sauvegardé avec succès`);
+      fetchBackupStatus();
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error backing up document:', error);
+      alert('Erreur lors de la sauvegarde du document');
+    }
+  };
+
+  const getBackupStatusBadge = (document) => {
+    if (document.pdf_backup) {
+      return (
+        <Badge className="bg-green-100 text-green-700 border-0">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Sauvegardé
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-700 border-0">
+          <Clock className="h-3 w-3 mr-1" />
+          En attente
+        </Badge>
+      );
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Gestion des Sauvegardes PDF</h3>
+        <Button 
+          onClick={handleBatchBackup}
+          disabled={isBackingUp}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {isBackingUp ? (
+            <>
+              <Clock className="h-4 w-4 mr-2 animate-spin" />
+              Sauvegarde en cours...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4 mr-2" />
+              Sauvegarder tous les documents
+            </>
+          )}
+        </Button>
+      </div>
+
+      {backupStatus && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Total Documents</p>
+                  <p className="text-2xl font-bold text-slate-800">{backupStatus.total_documents}</p>
+                </div>
+                <FileText className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Sauvegardés</p>
+                  <p className="text-2xl font-bold text-green-600">{backupStatus.backed_up_documents}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">En attente</p>
+                  <p className="text-2xl font-bold text-yellow-600">{backupStatus.pending_backup}</p>
+                </div>
+                <Clock className="h-8 w-8 text-yellow-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Progression</p>
+                  <p className="text-2xl font-bold text-blue-600">{backupStatus.backup_percentage}%</p>
+                </div>
+                <div className="w-8 h-8 relative">
+                  <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
+                    <circle
+                      cx="16"
+                      cy="16"
+                      r="14"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="transparent"
+                      className="text-slate-200"
+                    />
+                    <circle
+                      cx="16"
+                      cy="16"
+                      r="14"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="transparent"
+                      strokeDasharray={`${backupStatus.backup_percentage * 0.88} 88`}
+                      className="text-blue-500"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <h4 className="font-medium text-slate-700">Statut des Documents</h4>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {documents.map(document => (
+            <Card key={document.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h5 className="font-medium text-slate-800">{document.title}</h5>
+                  <p className="text-sm text-slate-500">
+                    {document.document_type} • Créé le {new Date(document.created_at).toLocaleDateString('fr-FR')}
+                  </p>
+                  {document.pdf_backup && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Sauvegardé le {new Date(document.pdf_backup.backup_created_at).toLocaleString('fr-FR')} 
+                      par {document.pdf_backup.backup_created_by}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-3">
+                  {getBackupStatusBadge(document)}
+                  {!document.pdf_backup && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSingleBackup(document.id, document.title)}
+                      className="text-blue-600 hover:bg-blue-50"
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Sauvegarder
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {backupStatus?.recent_backups && backupStatus.recent_backups.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="font-medium text-slate-700">Sauvegardes Récentes</h4>
+          <div className="space-y-2">
+            {backupStatus.recent_backups.map((backup, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-slate-800">{backup.title}</p>
+                  <p className="text-sm text-slate-500">
+                    Par {backup.pdf_backup?.backup_created_by} • {new Date(backup.pdf_backup?.backup_created_at).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <Badge className="bg-green-100 text-green-700 border-0">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Terminé
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Admin View Component for MOA
 const AdminView = ({ templates, onRefresh }) => {
   const [documentTypes, setDocumentTypes] = useState([]);
