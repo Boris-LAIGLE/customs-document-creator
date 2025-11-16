@@ -297,7 +297,29 @@ def require_role(required_roles: List[UserRole]):
         return current_user
     return role_checker
 
-def generate_document_pdf(document: Document, template: DocumentTemplate) -> str:
+def save_pdf_to_shared_folder(pdf_path: str, filename: str, subfolder: str = "documents") -> str:
+    """Save PDF to shared folder and return the permanent path"""
+    try:
+        # Create date-based subfolder
+        date_folder = datetime.now(timezone.utc).strftime("%Y/%m")
+        target_dir = PDF_STORAGE_DIR / subfolder / date_folder
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create unique filename to avoid conflicts
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{timestamp}_{filename}"
+        target_path = target_dir / safe_filename
+        
+        # Copy the temporary PDF to permanent location
+        shutil.copy2(pdf_path, target_path)
+        
+        logger.info(f"PDF saved to shared folder: {target_path}")
+        return str(target_path)
+    except Exception as e:
+        logger.error(f"Error saving PDF to shared folder: {str(e)}")
+        return pdf_path  # Return original path if saving fails
+
+def generate_document_pdf(document: Document, template: DocumentTemplate, save_to_shared: bool = False) -> str:
     """Generate PDF for a document"""
     
     # Create HTML content
