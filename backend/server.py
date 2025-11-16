@@ -18,9 +18,21 @@ from enum import Enum
 from weasyprint import HTML, CSS
 from fastapi.responses import FileResponse
 import tempfile
+import shutil
+from pathlib import Path as PathlibPath
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# PDF Storage Configuration
+PDF_STORAGE_DIR = PathlibPath("/app/shared_pdfs")
+PDF_STORAGE_DIR.mkdir(exist_ok=True)
+
+# Create subdirectories for organization
+(PDF_STORAGE_DIR / "documents").mkdir(exist_ok=True)
+(PDF_STORAGE_DIR / "controls").mkdir(exist_ok=True)
+(PDF_STORAGE_DIR / "templates").mkdir(exist_ok=True)
+(PDF_STORAGE_DIR / "backups").mkdir(exist_ok=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
