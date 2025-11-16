@@ -691,6 +691,23 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
                       <FileText className="h-3 w-3" />
                       <span>PDF</span>
                     </Button>
+                    {(user.role === 'moa' || user.role === 'validation_officer') && !document.pdf_backup && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleBackupDocument(document.id, document.title)}
+                        className="flex items-center space-x-1 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>Sauvegarder</span>
+                      </Button>
+                    )}
+                    {document.pdf_backup && (
+                      <Badge className="bg-green-100 text-green-700 border-0 text-xs">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Sauvegardé
+                      </Badge>
+                    )}
                     <Button variant="outline" size="sm">
                       Voir détails
                     </Button>
