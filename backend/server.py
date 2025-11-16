@@ -502,6 +502,12 @@ def generate_document_pdf(document: Document, template: DocumentTemplate, save_t
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
     try:
         HTML(string=html_content).write_pdf(temp_file.name)
+        
+        # Save to shared folder if requested
+        if save_to_shared:
+            filename = f"{document.title.replace(' ', '_')}_{document.id[:8]}.pdf"
+            return save_pdf_to_shared_folder(temp_file.name, filename, "documents")
+        
         return temp_file.name
     except Exception as e:
         logger.error(f"PDF generation error: {str(e)}")
