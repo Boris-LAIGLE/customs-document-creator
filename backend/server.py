@@ -693,6 +693,12 @@ def generate_certificate_of_visit_pdf(control: Control, declaration: Declaration
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
     try:
         HTML(string=html_content).write_pdf(temp_file.name)
+        
+        # Save to shared folder if requested
+        if save_to_shared:
+            filename = f"Certificat_Visite_{declaration.declaration_id}_{control.id[:8]}.pdf"
+            return save_pdf_to_shared_folder(temp_file.name, filename, "controls")
+        
         return temp_file.name
     except Exception as e:
         logger.error(f"Certificate PDF generation error: {str(e)}")
