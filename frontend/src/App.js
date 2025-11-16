@@ -787,6 +787,217 @@ const TemplatesView = ({ templates }) => {
   );
 };
 
+// PDF Viewer Component
+const PDFViewer = ({ documentId, isOpen, onClose, title }) => {
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.0);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && documentId) {
+      const token = localStorage.getItem('token');
+      const url = `${API}/documents/${documentId}/pdf/view`;
+      setPdfUrl(`${url}?token=${token}`);
+      setLoading(true);
+      setError(null);
+    }
+  }, [isOpen, documentId]);
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setLoading(false);
+  };
+
+  const onDocumentLoadError = (error) => {
+    console.error('PDF loading error:', error);
+    setError('Erreur lors du chargement du PDF');
+    setLoading(false);
+  };
+
+  const goToPrevPage = () => {
+    setPageNumber(prev => Math.max(prev - 1, 1));
+  };
+
+  const goToNextPage = () => {
+    setPageNumber(prev => Math.min(prev + 1, numPages));
+  };
+
+  const zoomIn = () => {
+    setScale(prev => Math.min(prev + 0.25, 3.0));
+  };
+
+  const zoomOut = () => {
+    setScale(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const handlePrint = () => {
+    if (pdfUrl) {
+      // Open PDF in new window for printing
+      const printWindow = window.open(pdfUrl, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await axios.get(`${API}/documents/${documentId}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${title.replace(' ', '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <span>{title}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="flex items-center space-x-2"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Imprimer</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="flex items-center space-x-2"
+              >
+                <Download className="h-4 w-4" />
+                <span>Télécharger</span>
+              </Button>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-hidden">
+          {/* PDF Controls */}
+          <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPrevPage}
+                  disabled={pageNumber <= 1}
+                >
+                  ←
+                </Button>
+                <span className="text-sm">
+                  Page {pageNumber} sur {numPages || 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={pageNumber >= numPages}
+                >
+                  →
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={zoomOut}
+                disabled={scale <= 0.5}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium">{Math.round(scale * 100)}%</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={zoomIn}
+                disabled={scale >= 3.0}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* PDF Viewer */}
+          <div className="flex-1 overflow-auto bg-gray-100 p-4" style={{ height: 'calc(95vh - 200px)' }}>
+            <div className="flex justify-center">
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <Clock className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+                  <span>Chargement du PDF...</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-center justify-center py-12">
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-700">{error}</AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {pdfUrl && !error && (
+                <Document
+                  file={{
+                    url: pdfUrl,
+                    httpHeaders: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  }}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
+                  loading={
+                    <div className="flex items-center justify-center py-12">
+                      <Clock className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+                      <span>Chargement du PDF...</span>
+                    </div>
+                  }
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    scale={scale}
+                    className="shadow-lg"
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                </Document>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Document Type Card Component
 const DocumentTypeCard = ({ docType, onDelete, onEdit }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
