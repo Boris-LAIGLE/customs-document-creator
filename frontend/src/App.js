@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
@@ -14,8 +15,11 @@ import { Separator } from './components/ui/separator';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Checkbox } from './components/ui/checkbox';
 import { FileText, Users, CheckCircle, Clock, AlertTriangle, Plus, LogOut, Search, Filter, 
-         Settings, Download, Eye, PlayCircle, StopCircle, XCircle } from 'lucide-react';
+         Settings, Download, Eye, PlayCircle, StopCircle, XCircle, Printer, ZoomIn, ZoomOut } from 'lucide-react';
 import './App.css';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
