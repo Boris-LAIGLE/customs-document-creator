@@ -513,7 +513,7 @@ def generate_document_pdf(document: Document, template: DocumentTemplate, save_t
         logger.error(f"PDF generation error: {str(e)}")
         raise HTTPException(status_code=500, detail="PDF generation failed")
 
-def generate_certificate_of_visit_pdf(control: Control, declaration: Declaration) -> str:
+def generate_certificate_of_visit_pdf(control: Control, declaration: Declaration, save_to_shared: bool = False) -> str:
     """Generate Certificate of Visit PDF"""
     
     html_content = f"""
