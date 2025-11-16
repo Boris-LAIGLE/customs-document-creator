@@ -1016,9 +1016,10 @@ const AdminView = ({ templates, onRefresh }) => {
       <h2 className="text-2xl font-bold text-slate-800">Administration MOA</h2>
       
       <Tabs defaultValue="templates" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="templates">Gestion des Modèles</TabsTrigger>
           <TabsTrigger value="doc-types">Types de Documents</TabsTrigger>
+          <TabsTrigger value="backups">Sauvegardes PDF</TabsTrigger>
         </TabsList>
 
         <TabsContent value="templates" className="space-y-6">
