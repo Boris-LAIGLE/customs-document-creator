@@ -572,6 +572,17 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
     }
   };
 
+  const handleBackupDocument = async (documentId, documentTitle) => {
+    try {
+      await axios.post(`${API}/documents/${documentId}/backup-pdf`);
+      alert(`Document "${documentTitle}" sauvegardé avec succès`);
+      onRefresh();
+    } catch (error) {
+      console.error('Error backing up document:', error);
+      alert('Erreur lors de la sauvegarde du document');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
