@@ -489,6 +489,8 @@ const DocumentsView = ({ documents, templates, onRefresh }) => {
   const { user } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [pdfDocument, setPdfDocument] = useState(null);
   const [newDocument, setNewDocument] = useState({
     title: '',
     document_type: 'customs_report',
