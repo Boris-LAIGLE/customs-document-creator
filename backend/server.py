@@ -1408,6 +1408,10 @@ async def update_document(
         }
     )
     
+    # Trigger auto-backup if status changed
+    if update_data.status:
+        await auto_backup_document(document_id, update_data.status)
+    
     # Get updated document
     updated_doc = await db.documents.find_one({"id": document_id})
     return Document(**updated_doc)
