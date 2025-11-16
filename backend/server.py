@@ -1487,6 +1487,67 @@ async def download_document_pdf(
         media_type='application/pdf'
     )
 
+@api_router.get("/documents/{document_id}/pdf/view")
+async def view_document_pdf(
+    document_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Serve PDF for inline viewing in browser"""
+    # Get document
+    document = await db.documents.find_one({"id": document_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc_obj = Document(**document)
+    
+    # Check permissions
+    if (current_user.role == UserRole.DRAFTING_AGENT and 
+        doc_obj.created_by != current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to view this document")
+    
+    # Get template
+    template = await db.templates.find_one({"id": doc_obj.template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template_obj = DocumentTemplate(**template)
+    
+    # Generate or get existing PDF
+    if doc_obj.pdf_backup and PathlibPath(doc_obj.pdf_backup["backup_path"]).exists():
+        pdf_path = doc_obj.pdf_backup["backup_path"]
+    else:
+        pdf_path = generate_document_pdf(doc_obj, template_obj)
+    
+    # Return file for inline viewing
+    return FileResponse(
+        path=pdf_path,
+        media_type='application/pdf',
+        headers={"Content-Disposition": "inline"}
+    )
+
+@api_router.get("/backup/pdf/{file_path:path}")
+async def view_backup_pdf(
+    file_path: str,
+    current_user: User = Depends(require_role([UserRole.MOA, UserRole.VALIDATION_OFFICER]))
+):
+    """Serve backed up PDF files for viewing"""
+    full_path = PDF_STORAGE_DIR / file_path
+    
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="PDF file not found")
+    
+    # Security check - ensure path is within PDF storage directory
+    try:
+        full_path.resolve().relative_to(PDF_STORAGE_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return FileResponse(
+        path=str(full_path),
+        media_type='application/pdf',
+        headers={"Content-Disposition": "inline"}
+    )
+
 @api_router.post("/documents/{document_id}/backup-pdf")
 async def backup_document_to_pdf(
     document_id: str,
