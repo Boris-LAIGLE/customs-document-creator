@@ -1483,6 +1483,188 @@ async def download_document_pdf(
         media_type='application/pdf'
     )
 
+@api_router.post("/documents/{document_id}/backup-pdf")
+async def backup_document_to_pdf(
+    document_id: str,
+    current_user: User = Depends(require_role([UserRole.MOA, UserRole.VALIDATION_OFFICER]))
+):
+    """Create a permanent PDF backup of a document"""
+    # Get document
+    document = await db.documents.find_one({"id": document_id})
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc_obj = Document(**document)
+    
+    # Get template
+    template = await db.templates.find_one({"id": doc_obj.template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template_obj = DocumentTemplate(**template)
+    
+    # Generate PDF and save to shared folder
+    pdf_path = generate_document_pdf(doc_obj, template_obj, save_to_shared=True)
+    
+    # Update document record with backup info
+    backup_info = {
+        "backup_created_at": datetime.now(timezone.utc),
+        "backup_created_by": current_user.full_name,
+        "backup_path": pdf_path
+    }
+    
+    await db.documents.update_one(
+        {"id": document_id},
+        {"$set": {"pdf_backup": backup_info}}
+    )
+    
+    return {
+        "message": "Document backed up to PDF successfully",
+        "backup_path": pdf_path,
+        "created_by": current_user.full_name
+    }
+
+@api_router.post("/backup/batch-documents")
+async def batch_backup_documents(
+    current_user: User = Depends(require_role([UserRole.MOA]))
+):
+    """Create PDF backups for all documents"""
+    try:
+        # Get all documents
+        documents = await db.documents.find().to_list(1000)
+        templates_cache = {}
+        
+        backup_results = []
+        
+        for doc_data in documents:
+            try:
+                doc_obj = Document(**doc_data)
+                
+                # Get template (use cache to avoid repeated queries)
+                if doc_obj.template_id not in templates_cache:
+                    template = await db.templates.find_one({"id": doc_obj.template_id})
+                    if template:
+                        templates_cache[doc_obj.template_id] = DocumentTemplate(**template)
+                
+                template_obj = templates_cache.get(doc_obj.template_id)
+                if not template_obj:
+                    backup_results.append({
+                        "document_id": doc_obj.id,
+                        "title": doc_obj.title,
+                        "status": "failed",
+                        "error": "Template not found"
+                    })
+                    continue
+                
+                # Generate PDF backup
+                pdf_path = generate_document_pdf(doc_obj, template_obj, save_to_shared=True)
+                
+                # Update document record
+                backup_info = {
+                    "backup_created_at": datetime.now(timezone.utc),
+                    "backup_created_by": current_user.full_name,
+                    "backup_path": pdf_path
+                }
+                
+                await db.documents.update_one(
+                    {"id": doc_obj.id},
+                    {"$set": {"pdf_backup": backup_info}}
+                )
+                
+                backup_results.append({
+                    "document_id": doc_obj.id,
+                    "title": doc_obj.title,
+                    "status": "success",
+                    "backup_path": pdf_path
+                })
+                
+            except Exception as e:
+                backup_results.append({
+                    "document_id": doc_data.get("id", "unknown"),
+                    "title": doc_data.get("title", "unknown"),
+                    "status": "failed",
+                    "error": str(e)
+                })
+        
+        success_count = len([r for r in backup_results if r["status"] == "success"])
+        failed_count = len(backup_results) - success_count
+        
+        return {
+            "message": f"Batch backup completed: {success_count} successful, {failed_count} failed",
+            "total_documents": len(backup_results),
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "results": backup_results
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch backup error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch backup failed")
+
+@api_router.get("/backup/status")
+async def get_backup_status(
+    current_user: User = Depends(require_role([UserRole.MOA, UserRole.VALIDATION_OFFICER]))
+):
+    """Get backup status for all documents"""
+    try:
+        # Count documents with and without backups
+        total_documents = await db.documents.count_documents({})
+        backed_up_documents = await db.documents.count_documents({"pdf_backup": {"$exists": True}})
+        
+        # Get recent backup activity
+        recent_backups = await db.documents.find(
+            {"pdf_backup": {"$exists": True}},
+            {"title": 1, "pdf_backup.backup_created_at": 1, "pdf_backup.backup_created_by": 1}
+        ).sort("pdf_backup.backup_created_at", -1).limit(10).to_list(10)
+        
+        return {
+            "total_documents": total_documents,
+            "backed_up_documents": backed_up_documents,
+            "pending_backup": total_documents - backed_up_documents,
+            "backup_percentage": round((backed_up_documents / total_documents * 100) if total_documents > 0 else 0, 1),
+            "recent_backups": recent_backups
+        }
+        
+    except Exception as e:
+        logger.error(f"Backup status error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get backup status")
+
+# Auto-backup when document status changes
+async def auto_backup_document(document_id: str, trigger_status: str):
+    """Automatically backup document when it reaches certain statuses"""
+    try:
+        # Only backup when document reaches final statuses
+        if trigger_status not in [DocumentStatus.VALIDATED, DocumentStatus.UNDER_VALIDATION]:
+            return
+        
+        document = await db.documents.find_one({"id": document_id})
+        if not document or document.get("pdf_backup"):
+            return  # Skip if document doesn't exist or already backed up
+        
+        doc_obj = Document(**document)
+        template = await db.templates.find_one({"id": doc_obj.template_id})
+        
+        if template:
+            template_obj = DocumentTemplate(**template)
+            pdf_path = generate_document_pdf(doc_obj, template_obj, save_to_shared=True)
+            
+            backup_info = {
+                "backup_created_at": datetime.now(timezone.utc),
+                "backup_created_by": "System Auto-backup",
+                "backup_path": pdf_path,
+                "trigger_status": trigger_status
+            }
+            
+            await db.documents.update_one(
+                {"id": document_id},
+                {"$set": {"pdf_backup": backup_info}}
+            )
+            
+            logger.info(f"Auto-backup created for document {document_id}")
+        
+    except Exception as e:
+        logger.error(f"Auto-backup error for document {document_id}: {str(e)}")
+
 # Mock Sydonia API endpoint
 @api_router.get("/sydonia/declaration/{declaration_id}")
 async def get_sydonia_declaration(
