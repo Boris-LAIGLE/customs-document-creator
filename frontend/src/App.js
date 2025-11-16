@@ -1250,6 +1250,10 @@ const AdminView = ({ templates, onRefresh }) => {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="backups" className="space-y-6">
+          <BackupManagementView onRefresh={onRefresh} />
+        </TabsContent>
       </Tabs>
     </div>
   );
